@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <title>CMPS161 Assignment 1</title>
+
+    <!-- Andrew Pang 1559331 */ -->
+    <meta name="viewport" content="initial-scale=1.0">
+    <meta charset="utf-8">
+
+    <style>
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+      #map {
+        height: 100%;
+      }
+      /* Optional: Makes the sample page fill the window. */
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+
+  </head>
+
+  <body>
+    <div id="map"></div>
+    <script>
+      var map;
+      var request;
+      var grid = new Array();
+      var openWeatherMapKey = "e2cc8c04d4f4eb4e92d940af42c9e6b6";
+      var NUMOFSTATIONS = 0;
+      var dataset_stations = [];
+      var geoJSON = 
+      {
+        type: "FeatureCollection",
+        features: []
+      };
+
+      function toRadians (angle) {
+        return angle * (Math.PI / 180);
+      }
+
+      function drawStations() {
+        // Draw Stations
+        if(dataset_stations.length == 0)
+        {
+          console.log("Dataset Station Empty!")
+        }
+        for(var i = 0; i < dataset_stations.length; i++)
+        {
+          var lat = dataset_stations[i].coord.Lat;
+          var lng = dataset_stations[i].coord.Lon;
+          var station_coord = new google.maps.LatLng({lat: lat, lng: lng});
+
+          new google.maps.Marker({position: station_coord, map: map});
+        }
+      }
+
+      function drawArrowTailToHead(tail, head) {
+        // Define a symbol using a predefined path (an arrow)
+        var lineSymbol = {
+          path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW
+        };
+
+        var wind_vector = new google.maps.Polyline({
+          path: [tail, head],
+          icons: [{
+            icon: lineSymbol,
+            offset: '100%'
+          }],
+          strokeWeight: "2",
+          strokeOpacity: "0.8",
+          map: map
+        });
+
+      }
+
+      function drawWind() {
+                // Draw wind vector for each station
+        if(dataset_stations.length == 0)
+        {
+          console.log("Dataset Station Empty!")
+        }
+        for(var i = 0; i < dataset_stations.length; i++)
+        {
+          // Tail end of vector is location of station
+          // Head(Arrow) end of vector is dependant on the station's wind direction & mag
+
+          var stationInJSON = dataset_stations[i];
+          var stationWindDeg = stationInJSON.wind.deg; // North == 0; East == 90 
+          var stationWindSpeed = stationInJSON.wind.speed;
+
+          var x = -1.0*stationWindSpeed*Math.sin(toRadians(stationWindDeg));
+          var y = -1.0*stationWindSpeed*Math.cos(toRadians(stationWindDeg));
+
+          // Apply damping so wind arrows aren't so long
+          y *= 0.4;
+          x *= 0.4;
+
+          var tail = new google.maps.LatLng(dataset_stations[i].coord.Lat, dataset_stations[i].coord.Lon);
+
+          var newLat = (tail.lat() - y);
+          var newLng = (tail.lng() - x);
+
+          var head = new google.maps.LatLng(newLat, newLng);
+
+          drawArrowTailToHead(tail, head);
+
+        }
+      }
+
+      function drawInterpolateWinds() {
+        // https://en.wikipedia.org/wiki/Inverse_distance_weighting
+
+        // Use grid points as interpolate points
+        var interpolateWinds = grid.slice();
+
+        function weight(i, unknownPoint){
+          var powerParameter = 2.0;
+          var knownPoint = new google.maps.LatLng(dataset_stations[i].coord.Lat, dataset_stations[i].coord.Lon);
+          var distance = Math.pow(google.maps.geometry.spherical.computeDistanceBetween(unknownPoint, knownPoint), powerParameter);
+
+          return parseFloat(1.0/distance);
+        }
+
+        function interpolatePoint(pointToInterpolate){
+          // returns the end point(head end) of the pointToInterpolate
+          // end point(head end) must consider all points in dataset_stations
+          // interpolate X-direction & Y-direction
+
+          // X-direction
+          var sumNumerator = 0;
+          var sumDenom = 0;
+
+          for(var i = 0; i < dataset_stations.length; i++)
+          {
+            var stationInJSON = dataset_stations[i];
+            var stationWindDeg = stationInJSON.wind.deg; // North == 0; East == 90 
+            var stationWindSpeed = stationInJSON.wind.speed;
+
+            var x = -1.0*stationWindSpeed*Math.sin(toRadians(stationWindDeg));
+
+            sumNumerator += weight(i, pointToInterpolate) * x;
+
+            sumDenom += weight(i, pointToInterpolate);
+          }
+          var dx = parseFloat(sumNumerator/sumDenom);
+
+          // Y-direction
+          var sumNumerator = 0;
+          var sumDenom = 0;
+
+          for(var i = 0; i < dataset_stations.length; i++)
+          {
+            var stationInJSON = dataset_stations[i];
+            var stationWindDeg = stationInJSON.wind.deg; // North == 0; East == 90 
+            var stationWindSpeed = stationInJSON.wind.speed;
+
+            var y = -1.0*stationWindSpeed*Math.cos(toRadians(stationWindDeg));
+
+            sumNumerator += weight(i, pointToInterpolate) * y;
+
+            sumDenom += weight(i, pointToInterpolate);
+          }
+          var dy = parseFloat(sumNumerator/sumDenom);
+
+          dx *= 0.3;
+          dy *= 0.3;
+
+
+          var newLat = pointToInterpolate.lat() - dy;
+          var newLng = pointToInterpolate.lng() - dx
+
+
+          if(isNaN(newLat) || isNaN(newLng))
+          {
+            console("Error: interpolatePoint");
+          }
+          else
+            return new google.maps.LatLng(newLat, newLng);
+        }
+
+
+
+        // Draw wind for each interpolation point
+        for(var i = 0; i < interpolateWinds.length; i++)
+        {
+          var tail = interpolateWinds[i];
+          var head = interpolatePoint(tail);
+
+          //drawArrowTailToHead(tail, head);
+          var lineSymbol = {
+            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW
+          };
+
+          var wind_vector = new google.maps.Polyline({
+            path: [tail, head],
+            icons: [{
+              icon: lineSymbol,
+              offset: '100%'
+            }],
+            strokeColor: "#a143ff",
+            strokeWeight: "2",
+            strokeOpacity: 0.8,
+            map: map
+          });
+        }
+
+      }
+
+      function drawHeatMap() {
+
+        var heatmapData = [];
+
+        for(var i = 0; i < dataset_stations.length; i++)
+        {
+          heatmapData.push({location: new google.maps.LatLng(dataset_stations[i].coord.Lat,dataset_stations[i].coord.Lon), weight: dataset_stations[i].wind.speed});
+        }
+
+        var heatmap = new google.maps.visualization.HeatmapLayer({
+          data: heatmapData,
+          radius: 35,
+        });
+        heatmap.setMap(map);
+
+      }
+
+      function initMap() {
+
+        map = new google.maps.Map(document.getElementById('map'), {
+          center: {lat: 37.13, lng: -119.30},
+          zoom: 5
+        });
+
+        // Get Grid Coords
+        // UL--UR
+        // |    |
+        // BL--BR
+
+        var UL = new google.maps.LatLng({lat: 42.000, lng: -124.409});
+        var UR = new google.maps.LatLng({lat: 42.000, lng: -114.020});
+        var BL = new google.maps.LatLng({lat: 32.534, lng: -124.409});
+        var BR = new google.maps.LatLng({lat: 32.534, lng: -114.020});
+      
+        var dx = parseFloat( (UL.lng() - UR.lng()) / 10.0);
+        var dy = parseFloat( (UL.lat() - BL.lat()) / 10.0);
+
+        for(var y = 0; y < 11; y++)
+        {
+          for(var x = 0; x < 11; x++)
+          {
+            var newLat = parseFloat(UL.lat() - y*dy);
+            var newLng = parseFloat(UL.lng() - x*dx);
+
+            var newCoord = new google.maps.LatLng(newLat,newLng);
+            grid.push(newCoord);
+
+          }
+        }
+
+        // Draw Grid
+        for(var i = 0; i < 11; i++)
+        {
+          // Draw Horizonal Lines
+          new google.maps.Polyline({
+            path: [ grid[i*11], grid[i*11+10] ],
+            map: map,
+            strokeColor: "#000000",
+            strokeOpacity: 0.3,
+            strokeWeight: 2
+          });
+
+          // Draw Vertical Lines
+          new google.maps.Polyline({
+            path: [ grid[i], grid[i+110] ],
+            map: map,
+            strokeColor: "#000000",
+            strokeOpacity: 0.3,
+            strokeWeight: 2
+          });
+
+        }
+
+        // -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
+
+        //http://api.openweathermap.org/data/2.5/weather?id=5393052&APPID=e2cc8c04d4f4eb4e92d940af42c9e6b6
+
+        //var requestString = "http://api.openweathermap.org/data/2.5/weather?id=5393052" + "&APPID=" + openWeatherMapKey;
+        var requestString = "http://api.openweathermap.org/data/2.5/box/city?bbox=" 
+        + UL.lng() + "," + UL.lat() + ","
+        + BR.lng() +  "," + BR.lat() + ","
+        + "7"
+        + "&cluster=yes&format=json"
+        + "&APPID=" + openWeatherMapKey;
+        console.log(requestString);
+
+        // Create a request variable and assign a new XMLHttpRequest object to it.
+        var request = new XMLHttpRequest();
+
+        // Open a new connection, using the GET request on the URL endpoint
+        request.open("GET", requestString, true);
+
+        request.onload = function(){
+          if (this.readyState == 4 && this.status == 200)
+          {
+            // Begin accessing JSON data here
+            var results = JSON.parse(this.responseText);
+
+            //Process Data from OpenWeatherMap API to Google MAPs API
+            NUMOFSTATIONS = results.cnt;
+
+            // Parse results from API into my settings (i.e. clone results to my dataset)
+            console.log(results.list); 
+            dataset_stations = results.list.slice();
+
+            //drawStations();
+
+            drawWind();
+
+            drawInterpolateWinds();
+
+            drawHeatMap();
+
+          }
+          else
+          {
+            console.error(this.statusText);
+          }
+        };   
+        request.onerror = function(){
+          console.error(this.statusText);
+        };
+        request.send();
+
+
+      }
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCriTc-URJTbKpAu2HUu4LGL5XEX9cYO8M&libraries=geometry,visualization&callback=initMap"
+    async defer></script>
+  </body>
+  
+</html>
