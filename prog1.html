@@ -33,6 +33,7 @@
       var openWeatherMapKey = "e2cc8c04d4f4eb4e92d940af42c9e6b6";
       var NUMOFSTATIONS = 0;
       var dataset_stations = [];
+      var dataset_interpolatedWinds = [];
       var geoJSON = 
       {
         type: "FeatureCollection",
@@ -53,10 +54,40 @@
         {
           var lat = dataset_stations[i].coord.Lat;
           var lng = dataset_stations[i].coord.Lon;
-          var station_coord = new google.maps.LatLng({lat: lat, lng: lng});
+          var station_coord = new google.maps.LatLng(lat, lng);
 
           new google.maps.Marker({position: station_coord, map: map});
         }
+      }
+
+      function findWindEndPoint(sourcePoint, directionInDegrees, mag) {
+        // Source Point ===> Interpolated Point
+        // Input: LatLng() 
+        // Output: LatLng()
+
+        //var stationInJSON = sourcePoint;
+        //var stationWindDeg = stationInJSON.wind.deg; // North == 0; East == 90;
+        //var stationWindSpeed = stationInJSON.wind.speed;
+
+        // Lat should be X
+        // Lng should be Y
+
+        var dx = mag*Math.cos(toRadians(directionInDegrees));
+        var dy = mag*Math.sin(toRadians(directionInDegrees));
+
+        // Apply damping so wind arrows aren't so long
+        //dy *= 0.3;
+        //dx *= 0.3;
+
+        //var tail = new google.maps.LatLng(dataset_stations[i].coord.Lat, dataset_stations[i].coord.Lon);
+
+        var newLat = (sourcePoint.lat() - dx);
+        var newLng = (sourcePoint.lng() - dy);
+
+        var head = new google.maps.LatLng(newLat, newLng);
+
+        return head;
+
       }
 
       function drawArrowTailToHead(tail, head) {
@@ -78,37 +109,30 @@
 
       }
 
-      function drawWind() {
-                // Draw wind vector for each station
+      function drawStationWinds() {
+        // Draw wind vector for each station
+        // Check if dataset of stations is empty
         if(dataset_stations.length == 0)
         {
           console.log("Dataset Station Empty!")
         }
-        for(var i = 0; i < dataset_stations.length; i++)
+        else
         {
-          // Tail end of vector is location of station
-          // Head(Arrow) end of vector is dependant on the station's wind direction & mag
+          for(var i = 0; i < dataset_stations.length; i++)
+          {
 
-          var stationInJSON = dataset_stations[i];
-          var stationWindDeg = stationInJSON.wind.deg; // North == 0; East == 90 
-          var stationWindSpeed = stationInJSON.wind.speed;
+            // Parse OpenWeatherMap API Data to my dataset
+            var lat = dataset_stations[i].coord.Lat;
+            var lng = dataset_stations[i].coord.Lon;
+            var windStation = new google.maps.LatLng(lat, lng);
 
-          var x = -1.0*stationWindSpeed*Math.sin(toRadians(stationWindDeg));
-          var y = -1.0*stationWindSpeed*Math.cos(toRadians(stationWindDeg));
+            var windSpeed = dataset_stations[i].wind.speed;
+            var windDeg = dataset_stations[i].wind.deg;
 
-          // Apply damping so wind arrows aren't so long
-          y *= 0.4;
-          x *= 0.4;
+            var windStationEndPoint = findWindEndPoint(windStation, windDeg, windSpeed);
 
-          var tail = new google.maps.LatLng(dataset_stations[i].coord.Lat, dataset_stations[i].coord.Lon);
-
-          var newLat = (tail.lat() - y);
-          var newLng = (tail.lng() - x);
-
-          var head = new google.maps.LatLng(newLat, newLng);
-
-          drawArrowTailToHead(tail, head);
-
+            drawArrowTailToHead(windStation, windStationEndPoint);
+          }
         }
       }
 
@@ -126,7 +150,7 @@
           return parseFloat(1.0/distance);
         }
 
-        function interpolatePoint(pointToInterpolate){
+        function findInterpolateEndPointViaShepardsMethod(pointToInterpolate){
           // returns the end point(head end) of the pointToInterpolate
           // end point(head end) must consider all points in dataset_stations
           // interpolate X-direction & Y-direction
@@ -141,7 +165,7 @@
             var stationWindDeg = stationInJSON.wind.deg; // North == 0; East == 90 
             var stationWindSpeed = stationInJSON.wind.speed;
 
-            var x = -1.0*stationWindSpeed*Math.sin(toRadians(stationWindDeg));
+            var x = stationWindSpeed*Math.cos(toRadians(stationWindDeg));
 
             sumNumerator += weight(i, pointToInterpolate) * x;
 
@@ -159,7 +183,7 @@
             var stationWindDeg = stationInJSON.wind.deg; // North == 0; East == 90 
             var stationWindSpeed = stationInJSON.wind.speed;
 
-            var y = -1.0*stationWindSpeed*Math.cos(toRadians(stationWindDeg));
+            var y = stationWindSpeed*Math.sin(toRadians(stationWindDeg));
 
             sumNumerator += weight(i, pointToInterpolate) * y;
 
@@ -167,31 +191,50 @@
           }
           var dy = parseFloat(sumNumerator/sumDenom);
 
-          dx *= 0.3;
-          dy *= 0.3;
+          //dx *= 0.3;
+          //dy *= 0.3;
 
 
-          var newLat = pointToInterpolate.lat() - dy;
-          var newLng = pointToInterpolate.lng() - dx
-
+          var newLat = pointToInterpolate.lat() - dx;
+          var newLng = pointToInterpolate.lng() - dy;
 
           if(isNaN(newLat) || isNaN(newLng))
           {
-            console("Error: interpolatePoint");
+            console("Error: findInterpolateEndPointViaShepardsMethod");
           }
           else
+          {
+            var newInterpolatedWindPointMag = Math.sqrt((dx*dx)+(dy*dy));
+            var newInterpolatedWindPointDeg = Math.atan2(dy,dx);
+            newInterpolatedWindPointDeg = newInterpolatedWindPointDeg * 180 / Math.PI;
+            // Compute which quad newInterpolatedWindPointDeg is pointing at
+            if(0 > newInterpolatedWindPointDeg && newInterpolatedWindPointDeg > -90)
+            {
+              newInterpolatedWindPointDeg += 360;
+            }
+            else if(-180 < newInterpolatedWindPointDeg && newInterpolatedWindPointDeg < -90)
+            {
+              newInterpolatedWindPointDeg += 360;
+            }
+
+            var interpolateWindInJSON = {
+              "coord":{"Lat":pointToInterpolate.lat(),"Lon":pointToInterpolate.lng()},
+              "wind":{"speed":newInterpolatedWindPointMag,"deg":newInterpolatedWindPointDeg} 
+            };
+
+            dataset_interpolatedWinds.push(interpolateWindInJSON);
+
             return new google.maps.LatLng(newLat, newLng);
+
+          }
         }
-
-
 
         // Draw wind for each interpolation point
         for(var i = 0; i < interpolateWinds.length; i++)
         {
           var tail = interpolateWinds[i];
-          var head = interpolatePoint(tail);
+          var head = findInterpolateEndPointViaShepardsMethod(tail);
 
-          //drawArrowTailToHead(tail, head);
           var lineSymbol = {
             path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW
           };
@@ -204,7 +247,7 @@
             }],
             strokeColor: "#a143ff",
             strokeWeight: "2",
-            strokeOpacity: 0.8,
+            strokeOpacity: 0.5,
             map: map
           });
         }
@@ -212,17 +255,20 @@
       }
 
       function drawHeatMap() {
-
         var heatmapData = [];
 
         for(var i = 0; i < dataset_stations.length; i++)
         {
+          // Add station data to heat map
           heatmapData.push({location: new google.maps.LatLng(dataset_stations[i].coord.Lat,dataset_stations[i].coord.Lon), weight: dataset_stations[i].wind.speed});
+
+          // Add interpolated wind data to heat map
+          heatmapData.push({location: new google.maps.LatLng(dataset_interpolatedWinds[i].coord.Lat,dataset_interpolatedWinds[i].coord.Lon), weight: dataset_interpolatedWinds[i].wind.speed});
         }
 
         var heatmap = new google.maps.visualization.HeatmapLayer({
           data: heatmapData,
-          radius: 35,
+          radius: 45,
         });
         heatmap.setMap(map);
 
@@ -313,12 +359,14 @@
             NUMOFSTATIONS = results.cnt;
 
             // Parse results from API into my settings (i.e. clone results to my dataset)
+            // wind.speed => Unit Default: meter/sec, Metric: meter/sec, Imperial: miles/hour.
+            // wind.deg => direction of wind coming FROM ... in degrees (meteorological) => http://snowfence.umn.edu/Components/winddirectionanddegreeswithouttable3.htm
             console.log(results.list); 
             dataset_stations = results.list.slice();
 
             //drawStations();
 
-            drawWind();
+            drawStationWinds();
 
             drawInterpolateWinds();
 
