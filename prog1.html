@@ -387,6 +387,7 @@
       }
 
       function toggleStationWind() {
+        clearToggle();
         for(var i = 0; i < stationWindsLayer.length; i++)
         {
           stationWindsLayer[i].setMap(stationWindsLayer[i].getMap() ? null : map);
@@ -394,6 +395,7 @@
       }
 
       function toggleArrowPlot() {
+        clearToggle();
         for(var i = 0; i < interpolatedWindsLayer.length; i++)
         {
           interpolatedWindsLayer[i].setMap(interpolatedWindsLayer[i].getMap() ? null : map);
@@ -401,9 +403,25 @@
       }
 
       function toggleStreamline() {
+        clearToggle();
         for(var i = 0; i < streamlineLayer.length; i++)
         {
           streamlineLayer[i].setMap(streamlineLayer[i].getMap() ? null : map);
+        }
+      }
+
+      function clearToggle() {
+        for(var i = 0; i < stationWindsLayer.length; i++)
+        {
+          stationWindsLayer[i].setMap(null);
+        }
+        for(var i = 0; i < interpolatedWindsLayer.length; i++)
+        {
+          interpolatedWindsLayer[i].setMap(null);
+        }
+        for(var i = 0; i < streamlineLayer.length; i++)
+        {
+          streamlineLayer[i].setMap(null);
         }
       }
 
