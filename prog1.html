@@ -78,8 +78,7 @@
       var interpolatedWindsLayer = [];
       var streamlineLayer = [];
 
-      var stationWindColorRange = ['#edf8fb', '#b3cde3', '#8c96c6', '#8856a7', '#810f7c'];
-      var interpolateWindsColorRange = ['#fef0d9', '#fdcc8a', '#fc8d59', '#e34a33', '#b30000'];
+      var stationWindColorRange = ['#ba55d3','#a748c5','#943bb7','#822daa','#70209c','#5e118f','#4b0082'];//['#edf8fb', '#b3cde3', '#8c96c6', '#8856a7', '#810f7c'];
 
       // function scale(num, in_min, in_max, out_min, out_max)
       // {
@@ -91,6 +90,7 @@
         var out_min = 0;
         var out_max = stationWindColorRange.length-1;
 
+        // Find max and min
         for(var i = 0; i < dataset_stations.length; i++)
         {
           var currentSpeed = dataset_stations[i].wind.speed;
@@ -224,9 +224,11 @@
           // end point(head end) must consider all points in dataset_stations
           // interpolate X-direction & Y-direction
 
-          // X-direction
-          var sumNumerator = 0;
-          var sumDenom = 0;
+          // X-direction & Y-direction
+          var sumNumerator_x = 0;
+          var sumDenom_x = 0;
+          var sumNumerator_y = 0;
+          var sumDenom_y = 0;
 
           for(var i = 0; i < dataset_stations.length; i++)
           {
@@ -235,40 +237,18 @@
             var stationWindSpeed = stationInJSON.wind.speed;
 
             var x = stationWindSpeed*Math.cos(toRadians(stationWindDeg));
-
-            sumNumerator += weight(i, pointToInterpolate) * x;
-
-            sumDenom += weight(i, pointToInterpolate);
-          }
-          var dx = parseFloat(sumNumerator/sumDenom);
-
-          // Y-direction
-          var sumNumerator = 0;
-          var sumDenom = 0;
-
-          for(var i = 0; i < dataset_stations.length; i++)
-          {
-            var stationInJSON = dataset_stations[i];
-            var stationWindDeg = stationInJSON.wind.deg; // North == 0; East == 90 
-            var stationWindSpeed = stationInJSON.wind.speed;
-
             var y = stationWindSpeed*Math.sin(toRadians(stationWindDeg));
 
-            sumNumerator += weight(i, pointToInterpolate) * y;
+            sumNumerator_x += weight(i, pointToInterpolate) * x;
+            sumDenom_x += weight(i, pointToInterpolate);
 
-            sumDenom += weight(i, pointToInterpolate);
+            sumNumerator_y += weight(i, pointToInterpolate) * y;
+            sumDenom_y += weight(i, pointToInterpolate);
           }
-          var dy = parseFloat(sumNumerator/sumDenom);
+          var dx = parseFloat(sumNumerator_x/sumDenom_x);
+          var dy = parseFloat(sumNumerator_y/sumDenom_y);
 
-          // Apply damping
-          //dx *= DAMPING;
-          //dy *= DAMPING;
-
-
-          var newLat = pointToInterpolate.lat() - dx;
-          var newLng = pointToInterpolate.lng() - dy;
-
-          if(isNaN(newLat) || isNaN(newLng))
+          if(isNaN(dx) || isNaN(dy))
           {
             console("Error: findInterpolateEndPointViaShepardsMethod");
           }
@@ -295,20 +275,31 @@
 
             dataset_interpolatedWinds.push(interpolateWindInJSON);
 
-            return new google.maps.LatLng(newLat, newLng);
+            //return new google.maps.LatLng(newLat, newLng);
 
           }
         }
 
-        // Draw wind for each interpolation point
+        // Get interpolate wind points, compute, and push into dataset
         for(var i = 0; i < interpolateWinds.length; i++)
         {
-          var tail = interpolateWinds[i];
-          var head = findInterpolateEndPointViaShepardsMethod(tail);
+          findInterpolateEndPointViaShepardsMethod(interpolateWinds[i]);
+        }
+
+        // Draw wind for each interpolation point
+        for(var i = 0; i < dataset_interpolatedWinds.length; i++)
+        {
+          var lat = dataset_interpolatedWinds[i].coord.Lat;
+          var lng = dataset_interpolatedWinds[i].coord.Lon;
+          var tail = new google.maps.LatLng(lat, lng);
+          //var tail = dataset_interpolatedWinds[i];
 
           var windSpeed = dataset_interpolatedWinds[i].wind.speed;
-          console.log(windSpeed);
+          var windDeg = dataset_interpolatedWinds[i].wind.deg;
+          var head = findWindEndPoint(tail, windDeg, windSpeed);
+
           var color = stationWindColorRange[ Math.round(VelocityMagScale(windSpeed)) ];
+
 
           var lineSymbol = {
             path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW
@@ -333,12 +324,10 @@
       }
 
       function drawStreamlines() {
-        streamlineLayer = grid.slice();
+        //var streamlineWinds = grid.slice();
+        var streamlineWinds = grid[0];
 
-        for(var i = 0; i < streamlineLayer.length; i++)
-        {
-          
-        }
+        streamlineWinds
       }
 
       function drawHeatMap() {
