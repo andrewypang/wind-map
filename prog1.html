@@ -205,11 +205,13 @@
         }
       }
 
-      function drawInterpolateWinds() {
-        // https://en.wikipedia.org/wiki/Inverse_distance_weighting
 
-        // Use grid points as interpolate points
-        var interpolateWinds = grid.slice();
+
+      function findInterpolateEndPointViaShepardsMethod(pointToInterpolate){
+        // pointToInterpolate is a LatLng Class
+        // output is JSON
+        // returns the end point(head end) of the pointToInterpolate
+        // end point(head end) must consider all points in dataset_stations
 
         function weight(i, unknownPoint){
           var powerParameter = 2.0;
@@ -219,71 +221,73 @@
           return parseFloat(1.0/distance);
         }
 
-        function findInterpolateEndPointViaShepardsMethod(pointToInterpolate){
-          // returns the end point(head end) of the pointToInterpolate
-          // end point(head end) must consider all points in dataset_stations
-          // interpolate X-direction & Y-direction
+        // X-direction & Y-direction
+        var sumNumerator_x = 0;
+        var sumDenom_x = 0;
+        var sumNumerator_y = 0;
+        var sumDenom_y = 0;
 
-          // X-direction & Y-direction
-          var sumNumerator_x = 0;
-          var sumDenom_x = 0;
-          var sumNumerator_y = 0;
-          var sumDenom_y = 0;
+        for(var i = 0; i < dataset_stations.length; i++)
+        {
+          var stationInJSON = dataset_stations[i];
+          var stationWindDeg = stationInJSON.wind.deg; // North == 0; East == 90 
+          var stationWindSpeed = stationInJSON.wind.speed;
 
-          for(var i = 0; i < dataset_stations.length; i++)
-          {
-            var stationInJSON = dataset_stations[i];
-            var stationWindDeg = stationInJSON.wind.deg; // North == 0; East == 90 
-            var stationWindSpeed = stationInJSON.wind.speed;
+          var x = stationWindSpeed*Math.cos(toRadians(stationWindDeg));
+          var y = stationWindSpeed*Math.sin(toRadians(stationWindDeg));
 
-            var x = stationWindSpeed*Math.cos(toRadians(stationWindDeg));
-            var y = stationWindSpeed*Math.sin(toRadians(stationWindDeg));
+          sumNumerator_x += weight(i, pointToInterpolate) * x;
+          sumDenom_x += weight(i, pointToInterpolate);
 
-            sumNumerator_x += weight(i, pointToInterpolate) * x;
-            sumDenom_x += weight(i, pointToInterpolate);
-
-            sumNumerator_y += weight(i, pointToInterpolate) * y;
-            sumDenom_y += weight(i, pointToInterpolate);
-          }
-          var dx = parseFloat(sumNumerator_x/sumDenom_x);
-          var dy = parseFloat(sumNumerator_y/sumDenom_y);
-
-          if(isNaN(dx) || isNaN(dy))
-          {
-            console("Error: findInterpolateEndPointViaShepardsMethod");
-          }
-          else
-          {
-            var newInterpolatedWindPointMag = Math.sqrt((dx*dx)+(dy*dy));
-            var newInterpolatedWindPointDeg = Math.atan2(dy,dx);
-            newInterpolatedWindPointDeg = newInterpolatedWindPointDeg * 180 / Math.PI;
-            // Compute which quad newInterpolatedWindPointDeg is pointing at
-            if(0 > newInterpolatedWindPointDeg && newInterpolatedWindPointDeg > -90)
-            {
-              newInterpolatedWindPointDeg += 360;
-            }
-            else if(-180 < newInterpolatedWindPointDeg && newInterpolatedWindPointDeg < -90)
-            {
-              newInterpolatedWindPointDeg += 360;
-            }
-
-            // Convert data to JSON
-            var interpolateWindInJSON = {
-              "coord":{"Lat":pointToInterpolate.lat(),"Lon":pointToInterpolate.lng()},
-              "wind":{"speed":newInterpolatedWindPointMag,"deg":newInterpolatedWindPointDeg} 
-            };
-
-            dataset_interpolatedWinds.push(interpolateWindInJSON);
-
-            //return new google.maps.LatLng(newLat, newLng);
-
-          }
+          sumNumerator_y += weight(i, pointToInterpolate) * y;
+          sumDenom_y += weight(i, pointToInterpolate);
         }
+        var dx = parseFloat(sumNumerator_x/sumDenom_x);
+        var dy = parseFloat(sumNumerator_y/sumDenom_y);
+
+        if(isNaN(dx) || isNaN(dy))
+        {
+          console("Error: findInterpolateEndPointViaShepardsMethod");
+        }
+        else
+        {
+          var newInterpolatedWindPointMag = Math.sqrt((dx*dx)+(dy*dy));
+          var newInterpolatedWindPointDeg = Math.atan2(dy,dx);
+          newInterpolatedWindPointDeg = newInterpolatedWindPointDeg * 180 / Math.PI;
+          // Compute which quad newInterpolatedWindPointDeg is pointing at
+          if(0 > newInterpolatedWindPointDeg && newInterpolatedWindPointDeg > -90)
+          {
+            newInterpolatedWindPointDeg += 360;
+          }
+          else if(-180 < newInterpolatedWindPointDeg && newInterpolatedWindPointDeg < -90)
+          {
+            newInterpolatedWindPointDeg += 360;
+          }
+
+          // Convert data to JSON
+          var interpolateWindInJSON = {
+            "coord":{"Lat":pointToInterpolate.lat(),"Lon":pointToInterpolate.lng()},
+            "wind":{"speed":newInterpolatedWindPointMag,"deg":newInterpolatedWindPointDeg} 
+          };
+
+
+          return interpolateWindInJSON;
+
+        }
+      }
+
+      function drawInterpolateWinds() {
+        // https://en.wikipedia.org/wiki/Inverse_distance_weighting
+
+        // Use grid points as interpolate points
+        var interpolateWinds = grid.slice();
 
         // Get interpolate wind points, compute, and push into dataset
         for(var i = 0; i < interpolateWinds.length; i++)
         {
-          findInterpolateEndPointViaShepardsMethod(interpolateWinds[i]);
+          var interpolateWindInJSON = findInterpolateEndPointViaShepardsMethod(interpolateWinds[i]);
+
+          dataset_interpolatedWinds.push(interpolateWindInJSON);
         }
 
         // Draw wind for each interpolation point
@@ -324,10 +328,37 @@
       }
 
       function drawStreamlines() {
-        //var streamlineWinds = grid.slice();
-        var streamlineWinds = grid[0];
+        var numOfSteps = 10;
+        var streamlineWinds = grid.slice();
+        var streamlineCoords = [];
+        //var streamlineWinds = grid[0];
+        console.log(streamlineWinds);
 
-        streamlineWinds
+        // For each interpolate point
+        for(var i = 0; i < streamlineWinds.length; i++)
+        {
+          var streamlineCoordsForEachLine = [];
+          var sourceInJSON = findInterpolateEndPointViaShepardsMethod(streamlineWinds[i]); //RETURNS IN JSON
+          var newPtTailSide = new google.maps.LatLng(sourceInJSON.coord.Lat, sourceInJSON.coord.Lon); // Convert into LatLng
+          var newPtHeadSide = findWindEndPoint(newPtTailSide, sourceInJSON.wind.deg, sourceInJSON.wind.speed);
+          streamlineCoordsForEachLine.push(newPtTailSide);
+          streamlineCoordsForEachLine.push(newPtHeadSide);
+          //console.log(streamlineCoords);
+          streamlineLayer.push(drawArrowTailToHead(newPtTailSide, newPtHeadSide, "blue"));
+
+
+          for(var j = 1; j < numOfSteps; j++)
+          {
+            //console.log(streamlineCoords[i][j]);
+            var sourceInJSON = findInterpolateEndPointViaShepardsMethod(streamlineCoordsForEachLine[j]);
+            var newPtTailSide = new google.maps.LatLng(sourceInJSON.coord.Lat, sourceInJSON.coord.Lon);
+            var newPtHeadSide = findWindEndPoint(newPtTailSide, sourceInJSON.wind.deg, sourceInJSON.wind.speed);
+            streamlineCoordsForEachLine.push(newPtHeadSide);
+            streamlineLayer.push(drawArrowTailToHead(newPtTailSide, newPtHeadSide, "red"));
+          }
+        }
+        
+
       }
 
       function drawHeatMap() {
@@ -480,7 +511,7 @@
 
             drawHeatMap();
 
-
+            drawStreamlines();
           }
           else
           {
