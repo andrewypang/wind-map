@@ -58,6 +58,7 @@
     <script>
       var NUMOFSTATIONS = 0;
       var ZOOM = 6;
+      var DAMPING = 0.1;
 
 
       var map;
@@ -76,6 +77,31 @@
       var stationWindsLayer = [];
       var interpolatedWindsLayer = [];
       var streamlineLayer = [];
+
+      var stationWindColorRange = ['#edf8fb', '#b3cde3', '#8c96c6', '#8856a7', '#810f7c'];
+      var interpolateWindsColorRange = ['#fef0d9', '#fdcc8a', '#fc8d59', '#e34a33', '#b30000'];
+
+      // function scale(num, in_min, in_max, out_min, out_max)
+      // {
+      //   return (num - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+      // }
+      function VelocityMagScale(num)
+      {
+        var in_min = in_max = dataset_stations[0].wind.speed;//wind speed lowest
+        var out_min = 0;
+        var out_max = stationWindColorRange.length-1;
+
+        for(var i = 0; i < dataset_stations.length; i++)
+        {
+          var currentSpeed = dataset_stations[i].wind.speed;
+
+          in_min = (currentSpeed < in_min ? currentSpeed : in_min);
+
+          in_max = (currentSpeed > in_max ? currentSpeed : in_max);
+        }
+
+        return (num - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+      }
 
       function toRadians (angle) {
         return angle * (Math.PI / 180);
@@ -113,8 +139,8 @@
         var dy = mag*Math.sin(toRadians(directionInDegrees));
 
         // Apply damping so wind arrows aren't so long
-        //dy *= 0.3;
-        //dx *= 0.3;
+        dy *= DAMPING;
+        dx *= DAMPING;
 
         //var tail = new google.maps.LatLng(dataset_stations[i].coord.Lat, dataset_stations[i].coord.Lon);
 
@@ -127,7 +153,7 @@
 
       }
 
-      function drawArrowTailToHead(tail, head) {
+      function drawArrowTailToHead(tail, head, color) {
         // Define a symbol using a predefined path (an arrow)
         var lineSymbol = {
           path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW
@@ -141,6 +167,7 @@
           }],
           strokeWeight: "2",
           strokeOpacity: "0.8",
+          strokeColor: color,
           map: null
         });
 
@@ -170,7 +197,10 @@
 
             var windStationEndPoint = findWindEndPoint(windStation, windDeg, windSpeed);
 
-            stationWindsLayer.push(drawArrowTailToHead(windStation, windStationEndPoint));
+            var color = stationWindColorRange[ Math.round(VelocityMagScale(windSpeed)) ];
+
+
+            stationWindsLayer.push(drawArrowTailToHead(windStation, windStationEndPoint, color));
           }
         }
       }
@@ -230,8 +260,9 @@
           }
           var dy = parseFloat(sumNumerator/sumDenom);
 
-          //dx *= 0.3;
-          //dy *= 0.3;
+          // Apply damping
+          //dx *= DAMPING;
+          //dy *= DAMPING;
 
 
           var newLat = pointToInterpolate.lat() - dx;
@@ -256,6 +287,7 @@
               newInterpolatedWindPointDeg += 360;
             }
 
+            // Convert data to JSON
             var interpolateWindInJSON = {
               "coord":{"Lat":pointToInterpolate.lat(),"Lon":pointToInterpolate.lng()},
               "wind":{"speed":newInterpolatedWindPointMag,"deg":newInterpolatedWindPointDeg} 
@@ -274,6 +306,10 @@
           var tail = interpolateWinds[i];
           var head = findInterpolateEndPointViaShepardsMethod(tail);
 
+          var windSpeed = dataset_interpolatedWinds[i].wind.speed;
+          console.log(windSpeed);
+          var color = stationWindColorRange[ Math.round(VelocityMagScale(windSpeed)) ];
+
           var lineSymbol = {
             path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW
           };
@@ -287,6 +323,7 @@
             strokeColor: "#a143ff",
             strokeWeight: "2",
             strokeOpacity: 0.5,
+            strokeColor: color,
             map: null
           });
 
@@ -447,7 +484,6 @@
             dataset_stations = results.list.slice();
 
             //drawStations();
-
 
             drawStationWinds(); //maybe call loadStationWinds instead
 
