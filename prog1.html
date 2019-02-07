@@ -62,6 +62,7 @@
 
 
       var map;
+      var gridBounds;
       var request;
       var grid = new Array();
       var openWeatherMapKey = "e2cc8c04d4f4eb4e92d940af42c9e6b6";
@@ -343,18 +344,32 @@
           var newPtHeadSide = findWindEndPoint(newPtTailSide, sourceInJSON.wind.deg, sourceInJSON.wind.speed);
           streamlineCoordsForEachLine.push(newPtTailSide);
           streamlineCoordsForEachLine.push(newPtHeadSide);
-          //console.log(streamlineCoords);
           streamlineLayer.push(drawArrowTailToHead(newPtTailSide, newPtHeadSide, "blue"));
 
 
-          for(var j = 1; j < numOfSteps; j++)
+          for(var j = 1;; j++)
           {
-            //console.log(streamlineCoords[i][j]);
             var sourceInJSON = findInterpolateEndPointViaShepardsMethod(streamlineCoordsForEachLine[j]);
             var newPtTailSide = new google.maps.LatLng(sourceInJSON.coord.Lat, sourceInJSON.coord.Lon);
-            var newPtHeadSide = findWindEndPoint(newPtTailSide, sourceInJSON.wind.deg, sourceInJSON.wind.speed);
-            streamlineCoordsForEachLine.push(newPtHeadSide);
-            streamlineLayer.push(drawArrowTailToHead(newPtTailSide, newPtHeadSide, "red"));
+            newPtHeadSide_check = findWindEndPoint(newPtTailSide, sourceInJSON.wind.deg, sourceInJSON.wind.speed);
+            if(gridBounds.contains(newPtHeadSide_check))
+            {
+              streamlineCoordsForEachLine.push(newPtHeadSide_check);
+              //streamlineLayer.push(drawArrowTailToHead(newPtTailSide, newPtHeadSide_check, "red"));
+              var arrow = new google.maps.Polyline({
+                path: [newPtTailSide, newPtHeadSide_check],
+                strokeWeight: "2",
+                strokeOpacity: "0.8",
+                strokeColor: "red",
+                map: null
+              });
+              streamlineLayer.push(arrow);
+            }
+            else
+            {
+              break;
+            }
+            
           }
         }
         
@@ -443,10 +458,13 @@
         // var BL = new google.maps.LatLng({lat: 24.37, lng: -125.46});
         // var BR = new google.maps.LatLng({lat: 24.37, lng: -65.91});
 
+
         var UL = new google.maps.LatLng({lat: 42.000, lng: -124.409});
         var UR = new google.maps.LatLng({lat: 42.000, lng: -114.020});
         var BL = new google.maps.LatLng({lat: 32.534, lng: -124.409});
         var BR = new google.maps.LatLng({lat: 32.534, lng: -114.020});
+
+        gridBounds = new google.maps.LatLngBounds(BL,UR);
       
         var dx = parseFloat( (UL.lng() - UR.lng()) / 10.0);
         var dy = parseFloat( (UL.lat() - BL.lat()) / 10.0);
