@@ -345,30 +345,71 @@
           var BackwardStreamlineCoordsForEachLine = [];
           var basePtInJSON = findInterpolateEndPointViaShepardsMethod(streamlineWinds[i]); //RETURNS IN JSON
           var basePtInLatLng = new google.maps.LatLng(basePtInJSON.coord.Lat, basePtInJSON.coord.Lon); // Convert into LatLng
+
           var newPtForwardSide = findWindEndPoint(basePtInLatLng, basePtInJSON.wind.deg, basePtInJSON.wind.speed);
           ForwardStreamlineCoordsForEachLine.push(basePtInLatLng);
-          ForwardStreamlineCoordsForEachLine.push(newPtForwardSide);
+          //ForwardStreamlineCoordsForEachLine.push(newPtForwardSide);
+
+          var newPtBackwardSide = findWindEndPoint(basePtInLatLng, (basePtInJSON.wind.deg + 180)%360, basePtInJSON.wind.speed);
+          BackwardStreamlineCoordsForEachLine.push(basePtInLatLng);
+          //BackwardStreamlineCoordsForEachLine.push(newPtBackwardSide);
+
           // Draw the first arrow i.e. grip point arrows
           streamlineLayer.push(drawArrowTailToHead(basePtInLatLng, newPtForwardSide, "blue"));
 
 
-          for(var j = 1; j < 100; j++)
+          for(var j = 0; j < 200; j++)
           {
             var forwardBasePtInJSON = findInterpolateEndPointViaShepardsMethod(ForwardStreamlineCoordsForEachLine[j]);
             var forwardBasePtInLatLng = new google.maps.LatLng(forwardBasePtInJSON.coord.Lat, forwardBasePtInJSON.coord.Lon);
-            newForwardBasePt = findWindEndPoint(forwardBasePtInLatLng, forwardBasePtInJSON.wind.deg, forwardBasePtInJSON.wind.speed);
-            if(gridBounds.contains(newForwardBasePt))
-            {
-              ForwardStreamlineCoordsForEachLine.push(newForwardBasePt);
-              //streamlineLayer.push(drawArrowTailToHead(newPtTailSide, newPtHeadSide_check, "red"));
-              var ForwardArrow = new google.maps.Polyline({
-                path: [forwardBasePtInLatLng, newForwardBasePt],
+            var newForwardPt = findWindEndPoint(forwardBasePtInLatLng, forwardBasePtInJSON.wind.deg, forwardBasePtInJSON.wind.speed);
+
+            var backwardBasePtInJSON = findInterpolateEndPointViaShepardsMethod(BackwardStreamlineCoordsForEachLine[j]);
+            var backwardBasePtInLatLng = new google.maps.LatLng(backwardBasePtInJSON.coord.Lat, backwardBasePtInJSON.coord.Lon);
+            var newBackwardPt = findWindEndPoint(backwardBasePtInLatLng, (backwardBasePtInJSON.wind.deg + 180)%360, backwardBasePtInJSON.wind.speed);
+
+            var ForwardArrow = new google.maps.Polyline({
+                path: [forwardBasePtInLatLng, newForwardPt],
                 strokeWeight: "2",
                 strokeOpacity: "0.8",
                 strokeColor: "red",
                 map: null
               });
+
+            var BackwardArrow = new google.maps.Polyline({
+                path: [backwardBasePtInLatLng, newBackwardPt],
+                strokeWeight: "2",
+                strokeOpacity: "0.8",
+                strokeColor: "blue",
+                map: null
+              });
+
+            if(gridBounds.contains(newForwardPt) && gridBounds.contains(newBackwardPt))
+            {
+              ForwardStreamlineCoordsForEachLine.push(newForwardPt);
+              BackwardStreamlineCoordsForEachLine.push(newBackwardPt);
+              //streamlineLayer.push(drawArrowTailToHead(newPtTailSide, newPtHeadSide_check, "red"));
+              
               streamlineLayer.push(ForwardArrow);
+
+              streamlineLayer.push(BackwardArrow);
+
+            }
+            else if(gridBounds.contains(newForwardPt) && !gridBounds.contains(newBackwardPt))
+            {
+              // back not inside box so push forward
+              ForwardStreamlineCoordsForEachLine.push(newForwardPt);
+              BackwardStreamlineCoordsForEachLine.push(backwardBasePtInLatLng);
+              streamlineLayer.push(ForwardArrow);
+              streamlineLayer.push(BackwardArrow);
+            }
+            else if(!gridBounds.contains(newForwardPt) && gridBounds.contains(newBackwardPt))
+            {
+              // back not inside box so push forward
+              ForwardStreamlineCoordsForEachLine.push(forwardBasePtInLatLng);
+              BackwardStreamlineCoordsForEachLine.push(newBackwardPt);
+              streamlineLayer.push(ForwardArrow);
+              streamlineLayer.push(BackwardArrow);
             }
             else
             {
@@ -449,7 +490,9 @@
         map = new google.maps.Map(document.getElementById('map'), {
           //center: {lat: 37.09, lng: -95.71},
           center: {lat: 37.13, lng: -119.30},
-          zoom: ZOOM
+          zoom: ZOOM,
+          draggable: false
+
         });
 
         // Get Grid Coords
