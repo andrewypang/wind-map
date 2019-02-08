@@ -341,33 +341,34 @@
         // For each interpolate point
         for(var i = 0; i < streamlineWinds.length; i++)
         {
-          var streamlineCoordsForEachLine = [];
-          var sourceInJSON = findInterpolateEndPointViaShepardsMethod(streamlineWinds[i]); //RETURNS IN JSON
-          var newPtTailSide = new google.maps.LatLng(sourceInJSON.coord.Lat, sourceInJSON.coord.Lon); // Convert into LatLng
-          var newPtHeadSide = findWindEndPoint(newPtTailSide, sourceInJSON.wind.deg, sourceInJSON.wind.speed);
-          streamlineCoordsForEachLine.push(newPtTailSide);
-          streamlineCoordsForEachLine.push(newPtHeadSide);
+          var ForwardStreamlineCoordsForEachLine = [];
+          var BackwardStreamlineCoordsForEachLine = [];
+          var basePtInJSON = findInterpolateEndPointViaShepardsMethod(streamlineWinds[i]); //RETURNS IN JSON
+          var basePtInLatLng = new google.maps.LatLng(basePtInJSON.coord.Lat, basePtInJSON.coord.Lon); // Convert into LatLng
+          var newPtForwardSide = findWindEndPoint(basePtInLatLng, basePtInJSON.wind.deg, basePtInJSON.wind.speed);
+          ForwardStreamlineCoordsForEachLine.push(basePtInLatLng);
+          ForwardStreamlineCoordsForEachLine.push(newPtForwardSide);
           // Draw the first arrow i.e. grip point arrows
-          streamlineLayer.push(drawArrowTailToHead(newPtTailSide, newPtHeadSide, "blue"));
+          streamlineLayer.push(drawArrowTailToHead(basePtInLatLng, newPtForwardSide, "blue"));
 
 
           for(var j = 1; j < 100; j++)
           {
-            var sourceInJSON = findInterpolateEndPointViaShepardsMethod(streamlineCoordsForEachLine[j]);
-            var newPtTailSide = new google.maps.LatLng(sourceInJSON.coord.Lat, sourceInJSON.coord.Lon);
-            newPtHeadSide_check = findWindEndPoint(newPtTailSide, sourceInJSON.wind.deg, sourceInJSON.wind.speed);
-            if(gridBounds.contains(newPtHeadSide_check))
+            var forwardBasePtInJSON = findInterpolateEndPointViaShepardsMethod(ForwardStreamlineCoordsForEachLine[j]);
+            var forwardBasePtInLatLng = new google.maps.LatLng(forwardBasePtInJSON.coord.Lat, forwardBasePtInJSON.coord.Lon);
+            newForwardBasePt = findWindEndPoint(forwardBasePtInLatLng, forwardBasePtInJSON.wind.deg, forwardBasePtInJSON.wind.speed);
+            if(gridBounds.contains(newForwardBasePt))
             {
-              streamlineCoordsForEachLine.push(newPtHeadSide_check);
+              ForwardStreamlineCoordsForEachLine.push(newForwardBasePt);
               //streamlineLayer.push(drawArrowTailToHead(newPtTailSide, newPtHeadSide_check, "red"));
-              var arrow = new google.maps.Polyline({
-                path: [newPtTailSide, newPtHeadSide_check],
+              var ForwardArrow = new google.maps.Polyline({
+                path: [forwardBasePtInLatLng, newForwardBasePt],
                 strokeWeight: "2",
                 strokeOpacity: "0.8",
                 strokeColor: "red",
                 map: null
               });
-              streamlineLayer.push(arrow);
+              streamlineLayer.push(ForwardArrow);
             }
             else
             {
