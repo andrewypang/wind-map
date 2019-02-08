@@ -332,8 +332,11 @@
         var numOfSteps = 10;
         var streamlineWinds = grid.slice();
         var streamlineCoords = [];
+
+
         //var streamlineWinds = grid[0];
         console.log(streamlineWinds);
+
 
         // For each interpolate point
         for(var i = 0; i < streamlineWinds.length; i++)
@@ -344,10 +347,11 @@
           var newPtHeadSide = findWindEndPoint(newPtTailSide, sourceInJSON.wind.deg, sourceInJSON.wind.speed);
           streamlineCoordsForEachLine.push(newPtTailSide);
           streamlineCoordsForEachLine.push(newPtHeadSide);
+          // Draw the first arrow i.e. grip point arrows
           streamlineLayer.push(drawArrowTailToHead(newPtTailSide, newPtHeadSide, "blue"));
 
 
-          for(var j = 1;; j++)
+          for(var j = 1; j < 100; j++)
           {
             var sourceInJSON = findInterpolateEndPointViaShepardsMethod(streamlineCoordsForEachLine[j]);
             var newPtTailSide = new google.maps.LatLng(sourceInJSON.coord.Lat, sourceInJSON.coord.Lon);
@@ -373,7 +377,6 @@
           }
         }
         
-
       }
 
       function drawHeatMap() {
