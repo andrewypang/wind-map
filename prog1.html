@@ -58,7 +58,7 @@
     <script>
       var NUMOFSTATIONS = 0;
       var ZOOM = 6;
-      var DAMPING = 0.1;
+      var DAMPING = 0.3;
 
 
       var map;
@@ -79,7 +79,7 @@
       var interpolatedWindsLayer = [];
       var streamlineLayer = [];
 
-      var stationWindColorRange = ['#ba55d3','#a748c5','#943bb7','#822daa','#70209c','#5e118f','#4b0082'];//['#edf8fb', '#b3cde3', '#8c96c6', '#8856a7', '#810f7c'];
+      var stationWindColorRange = ['#0000ff','#6e00e3','#9b00c2','#ba009e','#d50076','#ec0047','#ff0000'];//['#edf8fb', '#b3cde3', '#8c96c6', '#8856a7', '#810f7c'];
 
       // function scale(num, in_min, in_max, out_min, out_max)
       // {
@@ -283,6 +283,7 @@
         // Use grid points as interpolate points
         var interpolateWinds = grid.slice();
 
+
         // Get interpolate wind points, compute, and push into dataset
         for(var i = 0; i < interpolateWinds.length; i++)
         {
@@ -363,24 +364,29 @@
             var forwardBasePtInJSON = findInterpolateEndPointViaShepardsMethod(ForwardStreamlineCoordsForEachLine[j]);
             var forwardBasePtInLatLng = new google.maps.LatLng(forwardBasePtInJSON.coord.Lat, forwardBasePtInJSON.coord.Lon);
             var newForwardPt = findWindEndPoint(forwardBasePtInLatLng, forwardBasePtInJSON.wind.deg, forwardBasePtInJSON.wind.speed);
+            var forwardColor = stationWindColorRange[ Math.round(VelocityMagScale(forwardBasePtInJSON.wind.speed)) ];
+
 
             var backwardBasePtInJSON = findInterpolateEndPointViaShepardsMethod(BackwardStreamlineCoordsForEachLine[j]);
             var backwardBasePtInLatLng = new google.maps.LatLng(backwardBasePtInJSON.coord.Lat, backwardBasePtInJSON.coord.Lon);
             var newBackwardPt = findWindEndPoint(backwardBasePtInLatLng, (backwardBasePtInJSON.wind.deg + 180)%360, backwardBasePtInJSON.wind.speed);
+            var backwardColor = stationWindColorRange[ Math.round(VelocityMagScale(backwardBasePtInJSON.wind.speed)) ];
+
+
 
             var ForwardArrow = new google.maps.Polyline({
                 path: [forwardBasePtInLatLng, newForwardPt],
                 strokeWeight: "2",
-                strokeOpacity: "0.8",
-                strokeColor: "red",
+                strokeOpacity: "0.5",
+                strokeColor: forwardColor,
                 map: null
               });
 
             var BackwardArrow = new google.maps.Polyline({
                 path: [backwardBasePtInLatLng, newBackwardPt],
                 strokeWeight: "2",
-                strokeOpacity: "0.8",
-                strokeColor: "blue",
+                strokeOpacity: "0.5",
+                strokeColor: backwardColor,
                 map: null
               });
 
@@ -488,7 +494,6 @@
       function initMap() {
 
         map = new google.maps.Map(document.getElementById('map'), {
-          //center: {lat: 37.09, lng: -95.71},
           center: {lat: 37.13, lng: -119.30},
           zoom: ZOOM,
           draggable: false
@@ -504,6 +509,7 @@
         // var UR = new google.maps.LatLng({lat: 49.01, lng: -65.91});
         // var BL = new google.maps.LatLng({lat: 24.37, lng: -125.46});
         // var BR = new google.maps.LatLng({lat: 24.37, lng: -65.91});
+
 
 
         var UL = new google.maps.LatLng({lat: 42.000, lng: -124.409});
@@ -560,7 +566,7 @@
         var requestString = "http://api.openweathermap.org/data/2.5/box/city?bbox=" 
         + UL.lng() + "," + UL.lat() + ","
         + BR.lng() +  "," + BR.lat() + ","
-        + (ZOOM+2).toString()
+        + "7"
         + "&cluster=yes&format=json"
         + "&APPID=" + openWeatherMapKey;
         console.log(requestString);
