@@ -79,7 +79,7 @@
       var interpolatedWindsLayer = [];
       var streamlineLayer = [];
 
-      var stationWindColorRange = ['#0000ff','#6e00e3','#9b00c2','#ba009e','#d50076','#ec0047','#ff0000'];//['#edf8fb', '#b3cde3', '#8c96c6', '#8856a7', '#810f7c'];
+      var stationWindColorRange = ['#0000ff','#5300f0','#7400e0','#8d00cf','#a000bd','#b300a8','#c30093','#d0007d','#de0065','#ea004c','#f50030','#ff0000'];//['#edf8fb', '#b3cde3', '#8c96c6', '#8856a7', '#810f7c'];
 
       // function scale(num, in_min, in_max, out_min, out_max)
       // {
@@ -125,13 +125,8 @@
       }
 
       function findWindEndPoint(sourcePoint, directionInDegrees, mag) {
-        // Source Point ===> Interpolated Point
-        // Input: LatLng() 
+        // Input: sourcePoint as LatLng() class
         // Output: LatLng()
-
-        //var stationInJSON = sourcePoint;
-        //var stationWindDeg = stationInJSON.wind.deg; // North == 0; East == 90;
-        //var stationWindSpeed = stationInJSON.wind.speed;
 
         // Lat should be X
         // Lng should be Y
@@ -142,8 +137,6 @@
         // Apply damping so wind arrows aren't so long
         dy *= DAMPING;
         dx *= DAMPING;
-
-        //var tail = new google.maps.LatLng(dataset_stations[i].coord.Lat, dataset_stations[i].coord.Lon);
 
         var newLat = (sourcePoint.lat() - dx);
         var newLng = (sourcePoint.lng() - dy);
@@ -187,7 +180,6 @@
         {
           for(var i = 0; i < dataset_stations.length; i++)
           {
-
             // Parse OpenWeatherMap API Data to my dataset
             var lat = dataset_stations[i].coord.Lat;
             var lng = dataset_stations[i].coord.Lon;
@@ -199,7 +191,6 @@
             var windStationEndPoint = findWindEndPoint(windStation, windDeg, windSpeed);
 
             var color = stationWindColorRange[ Math.round(VelocityMagScale(windSpeed)) ];
-
 
             stationWindsLayer.push(drawArrowTailToHead(windStation, windStationEndPoint, color));
           }
@@ -284,7 +275,7 @@
         var interpolateWinds = grid.slice();
 
 
-        // Get interpolate wind points, compute, and push into dataset
+        // Get interpolate wind points, compute, and store into dataset
         for(var i = 0; i < interpolateWinds.length; i++)
         {
           var interpolateWindInJSON = findInterpolateEndPointViaShepardsMethod(interpolateWinds[i]);
@@ -298,14 +289,12 @@
           var lat = dataset_interpolatedWinds[i].coord.Lat;
           var lng = dataset_interpolatedWinds[i].coord.Lon;
           var tail = new google.maps.LatLng(lat, lng);
-          //var tail = dataset_interpolatedWinds[i];
 
           var windSpeed = dataset_interpolatedWinds[i].wind.speed;
           var windDeg = dataset_interpolatedWinds[i].wind.deg;
           var head = findWindEndPoint(tail, windDeg, windSpeed);
 
           var color = stationWindColorRange[ Math.round(VelocityMagScale(windSpeed)) ];
-
 
           var lineSymbol = {
             path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW
@@ -334,10 +323,7 @@
         var streamlineWinds = grid.slice();
         var streamlineCoords = [];
 
-
-        //var streamlineWinds = grid[0];
         console.log(streamlineWinds);
-
 
         // For each interpolate point
         for(var i = 0; i < streamlineWinds.length; i++)
@@ -349,15 +335,9 @@
 
           var newPtForwardSide = findWindEndPoint(basePtInLatLng, basePtInJSON.wind.deg, basePtInJSON.wind.speed);
           ForwardStreamlineCoordsForEachLine.push(basePtInLatLng);
-          //ForwardStreamlineCoordsForEachLine.push(newPtForwardSide);
 
           var newPtBackwardSide = findWindEndPoint(basePtInLatLng, (basePtInJSON.wind.deg + 180)%360, basePtInJSON.wind.speed);
           BackwardStreamlineCoordsForEachLine.push(basePtInLatLng);
-          //BackwardStreamlineCoordsForEachLine.push(newPtBackwardSide);
-
-          // Draw the first arrow i.e. grip point arrows
-          streamlineLayer.push(drawArrowTailToHead(basePtInLatLng, newPtForwardSide, "blue"));
-
 
           for(var j = 0; j < 200; j++)
           {
@@ -372,13 +352,23 @@
             var newBackwardPt = findWindEndPoint(backwardBasePtInLatLng, (backwardBasePtInJSON.wind.deg + 180)%360, backwardBasePtInJSON.wind.speed);
             var backwardColor = stationWindColorRange[ Math.round(VelocityMagScale(backwardBasePtInJSON.wind.speed)) ];
 
+            var forwardLineSymbol = {
+              path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW
+            };
 
+            var backwardLineSymbol = {
+              path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW
+            };
 
             var ForwardArrow = new google.maps.Polyline({
                 path: [forwardBasePtInLatLng, newForwardPt],
                 strokeWeight: "2",
                 strokeOpacity: "0.5",
                 strokeColor: forwardColor,
+                icons: [{
+                  icon: (j == 3) ? forwardLineSymbol : null,
+                  offset: '50%'
+                }],
                 map: null
               });
 
@@ -387,6 +377,10 @@
                 strokeWeight: "2",
                 strokeOpacity: "0.5",
                 strokeColor: backwardColor,
+                icons: [{
+                  icon: (j == 10) ? backwardLineSymbol : null,
+                  offset: '50%'
+                }],
                 map: null
               });
 
@@ -394,10 +388,8 @@
             {
               ForwardStreamlineCoordsForEachLine.push(newForwardPt);
               BackwardStreamlineCoordsForEachLine.push(newBackwardPt);
-              //streamlineLayer.push(drawArrowTailToHead(newPtTailSide, newPtHeadSide_check, "red"));
               
               streamlineLayer.push(ForwardArrow);
-
               streamlineLayer.push(BackwardArrow);
 
             }
@@ -407,14 +399,12 @@
               ForwardStreamlineCoordsForEachLine.push(newForwardPt);
               BackwardStreamlineCoordsForEachLine.push(backwardBasePtInLatLng);
               streamlineLayer.push(ForwardArrow);
-              streamlineLayer.push(BackwardArrow);
             }
             else if(!gridBounds.contains(newForwardPt) && gridBounds.contains(newBackwardPt))
             {
               // back not inside box so push forward
               ForwardStreamlineCoordsForEachLine.push(forwardBasePtInLatLng);
               BackwardStreamlineCoordsForEachLine.push(newBackwardPt);
-              streamlineLayer.push(ForwardArrow);
               streamlineLayer.push(BackwardArrow);
             }
             else
@@ -441,7 +431,7 @@
 
         heatmap = new google.maps.visualization.HeatmapLayer({
           data: heatmapData,
-          radius: 50,
+          radius: 70,
           dissipating: true
         });
         heatmap.setMap(map);
@@ -496,7 +486,7 @@
         map = new google.maps.Map(document.getElementById('map'), {
           center: {lat: 37.13, lng: -119.30},
           zoom: ZOOM,
-          draggable: false
+          draggable: true
 
         });
 
