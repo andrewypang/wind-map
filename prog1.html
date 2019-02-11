@@ -4,7 +4,7 @@
   <head>
     <title>CMPS161 Assignment 1</title>
 
-    <!-- Andrew Pang 1559331 */ -->
+    <!-- Andrew Pang 1559331 -->
     <meta name="viewport" content="initial-scale=1.0">
     <meta charset="utf-8">
 
@@ -33,15 +33,24 @@
         line-height: 30px;
         padding-left: 10px;
       }
-      #floating-panel {
-        background-color: #fff;
-        border: 1px solid #999;
-        left: 25%;
-        padding: 5px;
+
+      #info-panel {
         position: absolute;
-        top: 10px;
         z-index: 5;
+        border: 1px solid #999;
+        background-color: #fff;
+        padding: 0px;
+        top: 20%;
+        left: 10px;
+        font-family: 'Roboto','sans-serif';
+        padding-left: 5px;
+        padding-top: 5px;
+        text-align: left;
+        font-size: 15px;
+        width: 165px;
       }
+
+
     </style>
 
   </head>
@@ -54,11 +63,28 @@
       <button onclick="toggleStreamline()">Toggle Streamline</button>
     </div>
 
+    <div id="info-panel">
+      <p>Andrew Pang<br>anypang@ucsc.edu<br>Real Time Wind Map<br> </p>
+      <p>Images</p>
+      <ul>
+        <li> <a href="images/thumb.gif" target="_blank">Heatmap</a> </li>
+        <li> <a href="images/heatmapWithStationWind.png" target="_blank">Heatmap w/ Station Wind</a> </li>
+        <li> <a href="images/arrowPlot.png" target="_blank">Arrow Plot</a> </li>
+        <li> <a href="images/streamline02102019at715pm.png" target="_blank">Streamline 02/10/2019 at 7:15pm</a> </li>
+      </ul>
+      
+
+
+
+
+    </div>
+
     <div id="map"></div>
     <script>
-      var NUMOFSTATIONS = 0;
       var ZOOM = 6;
       var DAMPING = 0.3;
+      var MAX_WINDSPEED;
+      var MIN_WINDSPEED;
 
 
       var map;
@@ -69,39 +95,50 @@
 
       var dataset_stations = [];
       var dataset_interpolatedWinds = [];
-      var geoJSON = 
-      {
-        type: "FeatureCollection",
-        features: []
-      };
       var heatmap;
       var stationWindsLayer = [];
       var interpolatedWindsLayer = [];
       var streamlineLayer = [];
 
-      var stationWindColorRange = ['#0000ff','#5300f0','#7400e0','#8d00cf','#a000bd','#b300a8','#c30093','#d0007d','#de0065','#ea004c','#f50030','#ff0000'];//['#edf8fb', '#b3cde3', '#8c96c6', '#8856a7', '#810f7c'];
 
-      // function scale(num, in_min, in_max, out_min, out_max)
-      // {
-      //   return (num - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-      // }
+      var stationWindColorRange = ['#0000ff','#5300f0','#7400e0','#8d00cf','#a000bd','#b300a8','#c30093','#d0007d','#de0065','#ea004c','#f50030','#ff0000'];
+
+      function loadMaxMinWindSpeedFromDataset()
+      {
+        // Find max and min wind speeds from both stations measurements and interpolated winds
+        if(dataset_stations === undefined || dataset_stations.length == 0)
+        {
+          console.log("Can not find max/min wind speed")
+        }
+        else
+        {
+          MAX_WINDSPEED = MIN_WINDSPEED = dataset_stations[0].wind.speed;
+          for(var i = 0; i < dataset_stations.length; i++)
+          {
+            var currentSpeed = dataset_stations[i].wind.speed;
+
+            MIN_WINDSPEED = (currentSpeed < MIN_WINDSPEED ? currentSpeed : MIN_WINDSPEED);
+            MAX_WINDSPEED = (currentSpeed > MAX_WINDSPEED ? currentSpeed : MAX_WINDSPEED);
+          }
+          for(var i = 0; i < dataset_interpolatedWinds.length; i++)
+          {
+            var currentSpeed = dataset_interpolatedWinds[i].wind.speed;
+
+            MIN_WINDSPEED = (currentSpeed < MIN_WINDSPEED ? currentSpeed : MIN_WINDSPEED);
+            MAX_WINDSPEED = (currentSpeed > MAX_WINDSPEED ? currentSpeed : MAX_WINDSPEED);
+          }
+        }
+      }
+      
+
       function VelocityMagScale(num)
       {
-        var in_min = in_max = dataset_stations[0].wind.speed;//wind speed lowest
         var out_min = 0;
         var out_max = stationWindColorRange.length-1;
 
-        // Find max and min
-        for(var i = 0; i < dataset_stations.length; i++)
-        {
-          var currentSpeed = dataset_stations[i].wind.speed;
+        loadMaxMinWindSpeedFromDataset();
 
-          in_min = (currentSpeed < in_min ? currentSpeed : in_min);
-
-          in_max = (currentSpeed > in_max ? currentSpeed : in_max);
-        }
-
-        return (num - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+        return (num - MIN_WINDSPEED) * (out_max - out_min) / (MAX_WINDSPEED - MIN_WINDSPEED) + out_min;
       }
 
       function toRadians (angle) {
@@ -169,7 +206,7 @@
 
       }
 
-      function drawStationWinds() {
+      function loadStationWinds() {
         // Draw wind vector for each station
         // Check if dataset of stations is empty
         if(dataset_stations.length == 0)
@@ -268,7 +305,7 @@
         }
       }
 
-      function drawInterpolateWinds() {
+      function loadInterpolateWinds() {
         // https://en.wikipedia.org/wiki/Inverse_distance_weighting
 
         // Use grid points as interpolate points
@@ -318,7 +355,7 @@
 
       }
 
-      function drawStreamlines() {
+      function loadStreamlines() {
         var numOfSteps = 10;
         var streamlineWinds = grid.slice();
         var streamlineCoords = [];
@@ -366,7 +403,7 @@
                 strokeOpacity: "0.5",
                 strokeColor: forwardColor,
                 icons: [{
-                  icon: (j == 3) ? forwardLineSymbol : null,
+                  icon: (j % 10) == 0 ? forwardLineSymbol : null,
                   offset: '50%'
                 }],
                 map: null
@@ -411,10 +448,8 @@
             {
               break;
             }
-            
           }
         }
-        
       }
 
       function drawHeatMap() {
@@ -424,15 +459,18 @@
         {
           // Add station data to heat map
           heatmapData.push({location: new google.maps.LatLng(dataset_stations[i].coord.Lat,dataset_stations[i].coord.Lon), weight: dataset_stations[i].wind.speed});
+        }
 
+        for(var i = 0; i < dataset_interpolatedWinds.length; i++)
+        {
           // Add interpolated wind data to heat map
           heatmapData.push({location: new google.maps.LatLng(dataset_interpolatedWinds[i].coord.Lat,dataset_interpolatedWinds[i].coord.Lon), weight: dataset_interpolatedWinds[i].wind.speed});
         }
 
         heatmap = new google.maps.visualization.HeatmapLayer({
           data: heatmapData,
-          radius: 70,
-          dissipating: true
+          radius: 50,
+          dissipating: true,
         });
         heatmap.setMap(map);
 
@@ -483,13 +521,6 @@
 
       function initMap() {
 
-        map = new google.maps.Map(document.getElementById('map'), {
-          center: {lat: 37.13, lng: -119.30},
-          zoom: ZOOM,
-          draggable: true
-
-        });
-
         // Get Grid Coords
         // UL--UR
         // |    |
@@ -500,14 +531,21 @@
         // var BL = new google.maps.LatLng({lat: 24.37, lng: -125.46});
         // var BR = new google.maps.LatLng({lat: 24.37, lng: -65.91});
 
-
-
         var UL = new google.maps.LatLng({lat: 42.000, lng: -124.409});
         var UR = new google.maps.LatLng({lat: 42.000, lng: -114.020});
         var BL = new google.maps.LatLng({lat: 32.534, lng: -124.409});
         var BR = new google.maps.LatLng({lat: 32.534, lng: -114.020});
 
         gridBounds = new google.maps.LatLngBounds(BL,UR);
+
+        var centerOfGrid = gridBounds.getCenter();
+
+        map = new google.maps.Map(document.getElementById('map'), {
+          center: centerOfGrid,
+          zoom: ZOOM,
+          draggable: true
+
+        });
       
         var dx = parseFloat( (UL.lng() - UR.lng()) / 10.0);
         var dy = parseFloat( (UL.lat() - BL.lat()) / 10.0);
@@ -521,7 +559,6 @@
 
             var newCoord = new google.maps.LatLng(newLat,newLng);
             grid.push(newCoord);
-
           }
         }
 
@@ -574,7 +611,6 @@
             var results = JSON.parse(this.responseText);
 
             //Process Data from OpenWeatherMap API to Google MAPs API
-            NUMOFSTATIONS = results.cnt;
 
             // Parse results from API into my settings (i.e. clone results to my dataset)
             // wind.speed => Unit Default: meter/sec, Metric: meter/sec, Imperial: miles/hour.
@@ -584,11 +620,11 @@
 
             //drawStations();
 
-            drawStationWinds(); //maybe call loadStationWinds instead
+            loadStationWinds();
 
-            drawInterpolateWinds(); //this too
+            loadInterpolateWinds();
 
-            drawStreamlines();
+            loadStreamlines();
 
             drawHeatMap();
 
