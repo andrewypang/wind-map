@@ -42,12 +42,21 @@
         padding: 0px;
         top: 20%;
         left: 10px;
-        font-family: 'Roboto','sans-serif';
         padding-left: 5px;
         padding-top: 5px;
         text-align: left;
         font-size: 15px;
-        width: 165px;
+        width: 265px;
+      }
+
+      #gradient {
+        z-index: 5;
+        background-color: rgba(255,255,255,0.6);
+        border: 0px solid #999;
+        top: 90%;
+        position: absolute;
+        height: 30px;
+        left: 10px;
       }
 
 
@@ -63,14 +72,23 @@
       <button onclick="toggleStreamline()">Toggle Streamline</button>
     </div>
 
+    
     <div id="info-panel">
       <p>Andrew Pang<br>anypang@ucsc.edu<br>Real Time Wind Map<br> </p>
       <p>Images</p>
       <ul>
-        <li> <a href="images/thumb.gif" target="_blank">Heatmap</a> </li>
+        <li> <a href="images/heatmap.png" target="_blank">Heatmap</a> </li>
         <li> <a href="images/heatmapWithStationWind.png" target="_blank">Heatmap w/ Station Wind</a> </li>
         <li> <a href="images/arrowPlot.png" target="_blank">Arrow Plot</a> </li>
-        <li> <a href="images/streamline02102019at822pm.png" target="_blank">Streamline 02/10/2019 at 8:22pm</a> </li>
+        <li> <a href="images/streamline02102019at1016pm.png" target="_blank">Streamline 02/10/2019 at 10:16pm</a> </li>
+        <li> <a href="images/streamline02102019at1105pm.png" target="_blank">Streamline 02/10/2019 at 11:05pm</a> </li>
+        <li> <a href="images/streamline02112019at951am.png" target="_blank">Streamline 02/11/2019 at 9:51am</a> </li>
+        <li> <a href="images/streamline02112019at1012am.png" target="_blank">Streamline 02/11/2019 at 10:12am</a> </li>
+        <li> <a href="images/streamline02112019at1022am.png" target="_blank">Streamline 02/11/2019 at 10:22am</a> </li>
+        <li> <a href="images/streamline02112019at1221pm.png" target="_blank">Streamline 02/11/2019 at 12:21pm</a> </li>
+        <li> <a href="images/streamline02112019at134pm.png" target="_blank">Streamline 02/11/2019 at 1:34pm</a> </li>
+        <li> <a href="images/thumb.gif" target="_blank">Streamline 02/11/2019 at 4:12pm</a> </li>
+        <li> <a href="images/streamline02112019at431pm.png" target="_blank">Streamline 02/11/2019 at 4:31pm</a> </li>
       </ul>
       <p>Links</p>
       <ol>
@@ -78,7 +96,21 @@
         <li> <a href="UserDocumentation.pdf" target="_blank">User Documentation</a> </li>
         <li> <a href="TechnicalWriteup.pdf" target="_blank">Technical Writeup</a> </li>
       </ol> 
+    </div>
 
+    <div id="gradient" style="width: 350px;">
+      <div id="gradient" style="width: 8.33333%; background: rgb(0, 0, 255) none repeat scroll 0% 0%; top: 0%; left: 0.0000%;"></div>
+      <div id="gradient" style="width: 8.33333%; background: rgb(83, 0, 240) none repeat scroll 0% 0%; top: 0%; left: 8.3333%;"></div>
+      <div id="gradient" style="width: 8.33333%; background: rgb(116, 0, 224) none repeat scroll 0% 0%; top: 0%; left: 16.6666%;"></div>
+      <div id="gradient" style="width: 8.33333%; background: rgb(141, 0, 207) none repeat scroll 0% 0%; top: 0%; left: 25.0000%;"></div>
+      <div id="gradient" style="width: 8.33333%; background: rgb(160, 0, 189) none repeat scroll 0% 0%; top: 0%; left: 33.3333%;"></div>
+      <div id="gradient" style="width: 8.33333%; background: rgb(179, 0, 168) none repeat scroll 0% 0%; top: 0%; left: 41.6666%;"></div>
+      <div id="gradient" style="width: 8.33333%; background: rgb(195, 0, 147) none repeat scroll 0% 0%; top: 0%; left: 50.0000%;"></div>
+      <div id="gradient" style="width: 8.33333%; background: rgb(208, 0, 125) none repeat scroll 0% 0%; top: 0%; left: 58.3333%;"></div>
+      <div id="gradient" style="width: 8.33333%; background: rgb(222, 0, 101) none repeat scroll 0% 0%; top: 0%; left: 66.6666%;"></div>
+      <div id="gradient" style="width: 8.33333%; background: rgb(234, 0, 76) none repeat scroll 0% 0%; top: 0%; left: 75.0000%;"></div>
+      <div id="gradient" style="width: 8.33333%; background: rgb(245, 0, 48) none repeat scroll 0% 0%; top: 0%; left: 83.3333%;"></div>
+      <div id="gradient" style="width: 8.33333%; background: rgb(255, 0, 0) none repeat scroll 0% 0%; top: 0%; left: 91.6666%;"></div>
     </div>
 
     <div id="map"></div>
@@ -528,11 +560,6 @@
         // |    |
         // BL--BR
 
-        // var UL = new google.maps.LatLng({lat: 49.01, lng: -125.46});
-        // var UR = new google.maps.LatLng({lat: 49.01, lng: -65.91});
-        // var BL = new google.maps.LatLng({lat: 24.37, lng: -125.46});
-        // var BR = new google.maps.LatLng({lat: 24.37, lng: -65.91});
-
         var UL = new google.maps.LatLng({lat: 42.000, lng: -124.409});
         var UR = new google.maps.LatLng({lat: 42.000, lng: -114.020});
         var BL = new google.maps.LatLng({lat: 32.534, lng: -124.409});
@@ -545,6 +572,8 @@
         map = new google.maps.Map(document.getElementById('map'), {
           center: centerOfGrid,
           zoom: ZOOM,
+          minZoom: 5,
+          maxZoom: ZOOM,
           draggable: true
 
         });
