@@ -7,3 +7,5 @@ Technology Used:
 * [Maps JavaScript API](https://developers.google.com/maps/documentation/javascript/reference/)
 
 ## Highlights & Features
+
+![main-gif](images/streamline02102019.gif)
