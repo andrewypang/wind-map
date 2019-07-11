@@ -501,6 +501,9 @@ function initMap() {
   + "&cluster=yes&format=json"
   + "&APPID=" + openWeatherMapKey;
 
+// Error 400: "Requested area is larger than allowed for your account type (25.00 square degrees)"
+// https://openweathermap.desk.com/customer/portal/questions/17572511-error-requested-area-is-larger-than-allowed-for-your-account-type-25-square-degrees-
+
   // Create a request variable and assign a new XMLHttpRequest object to it.
   var request = new XMLHttpRequest();
 
@@ -510,6 +513,7 @@ function initMap() {
   request.onload = function(){
     if (this.readyState == 4 && this.status == 200)
     {
+
       // Begin accessing JSON data here
       var results = JSON.parse(this.responseText);
 
