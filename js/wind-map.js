@@ -8,7 +8,7 @@ var map;
 var gridBounds;
 var request;
 var grid = [];
-var openWeatherMapKey = "e2cc8c04d4f4eb4e92d940af42c9e6b6";
+var openWeatherMapKey = config.API_KEY_OPENWEATHERMAP;
 
 var dataset_stations = [];
 var dataset_interpolatedWinds = [];
